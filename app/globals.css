@@ -84,3 +84,11 @@ body {
   50% { transform: scale(1.02); opacity: 1; }
 }
 .animate-pulse-slow { animation: pulseSoft 4s ease-in-out infinite; }
+
+@keyframes beamSlide {
+  0% { transform: translateY(-10%); opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { transform: translateY(10%); opacity: 0.8; }
+}
+.animate-beam-slide { animation: beamSlide 6s ease-in-out infinite alternate; }
+.animate-beam-slide-slow { animation: beamSlide 9s ease-in-out infinite alternate-reverse; }

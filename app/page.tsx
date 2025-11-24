@@ -8,7 +8,6 @@ import WinningModal from "../components/WinningModal";
 
 type Point = { x: number; y: number };
 type Ripple = { id: number; x: number; y: number };
-type ThemeMode = "classic" | "pulse" | "aurora";
 
 // Compute circle score and geometry given a set of stroke points.
 function computeCircleScore(points: Point[]) {
@@ -163,23 +162,6 @@ function VictoryAura() {
   );
 }
 
-function AuroraBackdrop() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl z-0">
-      <div className="absolute inset-[-25%] bg-[conic-gradient(from_220deg_at_50%_50%,rgba(236,72,153,0.12),rgba(14,165,233,0.12),rgba(52,211,153,0.08),rgba(236,72,153,0.12))] blur-3xl opacity-65 animate-slow-spin" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(236,72,153,0.28),transparent_35%),radial-gradient(circle_at_80%_30%,rgba(56,189,248,0.2),transparent_35%),radial-gradient(circle_at_40%_80%,rgba(52,211,153,0.2),transparent_35%)] mix-blend-screen" />
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "linear-gradient(120deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(300deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
-          backgroundSize: "42px 42px",
-        }}
-      />
-    </div>
-  );
-}
-
 function WinRays() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -201,12 +183,21 @@ function WinRays() {
   );
 }
 
+function SideBeams() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute left-[-8%] top-0 h-full w-24 bg-gradient-to-r from-cyan-500/0 via-cyan-500/18 to-transparent blur-3xl animate-beam-slide" />
+      <div className="absolute right-[-8%] top-0 h-full w-24 bg-gradient-to-l from-amber-300/0 via-amber-300/14 to-transparent blur-3xl animate-beam-slide-slow" />
+      <div className="absolute inset-y-0 left-0 w-full bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.06),transparent_45%)]" />
+    </div>
+  );
+}
+
 const PRIZES = [
-  "10% Discount on Next Rental",
-  "Free Car Rent (1 Day)",
-  "Yacht Tour Discount (20%)",
-  "Exclusive Beno Merch",
-  "5% Discount",
+  "20% discount",
+  "40% discount",
+  "1 hour free ride",
+  "Yacht trip",
 ];
 
 export default function Home() {
@@ -225,26 +216,18 @@ export default function Home() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [prize, setPrize] = useState("");
-  const [themeMode, setThemeMode] = useState<ThemeMode>("classic");
   const [touchRipples, setTouchRipples] = useState<Ripple[]>([]);
   const lastRippleRef = useRef(0);
   const lastLiveUpdateRef = useRef(0);
-  const isPulse = themeMode === "pulse";
-  const isAurora = themeMode === "aurora";
-  const isAltTheme = isPulse || isAurora;
 
   // Memoize line style to avoid re-allocations
   const lineStyle = useMemo(
     () => ({
       width: 5,
-      color: isPulse ? "#06b6d4" : isAurora ? "#f472b6" : "#020617",
-      shadowColor: isPulse
-        ? "rgba(56,189,248,0.35)"
-        : isAurora
-          ? "rgba(236,72,153,0.35)"
-          : "rgba(0,0,0,0.06)",
+      color: "#06b6d4",
+      shadowColor: "rgba(56,189,248,0.35)",
     }),
-    [isAurora, isPulse]
+    []
   );
 
   // Resize and prepare the canvas for high-DPI rendering.
@@ -318,20 +301,10 @@ export default function Home() {
 
     // Background
     ctx.save();
-    if (isPulse) {
-      const gradient = ctx.createLinearGradient(0, 0, w, h);
-      gradient.addColorStop(0, "#0b1224");
-      gradient.addColorStop(1, "#0f172a");
-      ctx.fillStyle = gradient;
-    } else if (isAurora) {
-      const gradient = ctx.createLinearGradient(0, 0, w, h);
-      gradient.addColorStop(0, "#130a1a");
-      gradient.addColorStop(0.5, "#0d1b2a");
-      gradient.addColorStop(1, "#0b1220");
-      ctx.fillStyle = gradient;
-    } else {
-      ctx.fillStyle = "#ffffff";
-    }
+    const gradient = ctx.createLinearGradient(0, 0, w, h);
+    gradient.addColorStop(0, "#0b1224");
+    gradient.addColorStop(1, "#0f172a");
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
@@ -369,38 +342,19 @@ export default function Home() {
       ctx.lineWidth = lineStyle.width + 6;
       ctx.strokeStyle = color.rgba(0.8);
       ctx.shadowColor = color.rgba(0.9);
-      ctx.shadowBlur = isAltTheme ? 26 : 18;
+      ctx.shadowBlur = 26;
       ctx.stroke();
       ctx.restore();
 
       // Core pass
       ctx.lineWidth = lineStyle.width;
-      ctx.shadowBlur = isAltTheme ? 2 : 0;
+      ctx.shadowBlur = 2;
       ctx.strokeStyle = won ? "#22c55e" : lineStyle.color;
       ctx.stroke();
       ctx.restore();
     }
 
-    if (res && !isAltTheme) {
-      const { center, radius, score: s } = res;
-      const color = getColorByScore(s);
-      ctx.save();
-      ctx.setLineDash([6, 10]);
-      ctx.lineDashOffset = 0;
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = color.hex;
-      ctx.globalAlpha = 0.95;
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      // Center dot
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = color.hex;
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    } else if (res && isPulse) {
+    if (res) {
       const { center, radius } = res;
       ctx.save();
       ctx.setLineDash([4, 12]);
@@ -415,28 +369,6 @@ export default function Home() {
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.fillStyle = "rgba(59,130,246,0.9)";
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    } else if (res && isAurora) {
-      const { center, radius } = res;
-      ctx.save();
-      ctx.globalAlpha = 0.85;
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = "rgba(236,72,153,0.45)";
-      ctx.setLineDash([14, 10]);
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, radius * 0.92, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([6, 10]);
-      ctx.strokeStyle = "rgba(14,165,233,0.35)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, radius * 1.08, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(236,72,153,0.9)";
       ctx.beginPath();
       ctx.arc(center.x, center.y, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -457,7 +389,6 @@ export default function Home() {
   };
 
   const pushRipple = (pt: Point) => {
-    if (!isPulse) return;
     const now = performance.now();
     if (now - lastRippleRef.current < 70) return;
     lastRippleRef.current = now;
@@ -504,7 +435,7 @@ export default function Home() {
       pointsRef.current.push(pt);
       pushRipple(pt);
     }
-    if (isPulse && coalesced && coalesced.length > 0) {
+    if (coalesced && coalesced.length > 0) {
       const canvas = canvasRef.current!;
       const rect = canvas.getBoundingClientRect();
       const last = coalesced[coalesced.length - 1];
@@ -526,14 +457,18 @@ export default function Home() {
     setScore(result.score);
     setLiveScore(result.score);
 
-    // Win at 90%+ for a Beno-level circle
-    const isWin = result.score >= 90;
+    // Prize unlock at 92%+
+    const isWin = result.score >= 92;
     setWon(isWin);
 
     if (isWin) {
       triggerWinFlash();
-      const randomPrize = PRIZES[Math.floor(Math.random() * PRIZES.length)];
-      setPrize(randomPrize);
+      let reward = PRIZES[0];
+      if (result.score === 100) reward = PRIZES[3];
+      else if (result.score >= 98) reward = PRIZES[2];
+      else if (result.score >= 96) reward = PRIZES[1];
+      else if (result.score >= 92) reward = PRIZES[0];
+      setPrize(reward);
       setTimeout(() => setModalOpen(true), 1000); // Delay modal slightly for effect
     } else if (flashTimeoutRef.current) {
       window.clearTimeout(flashTimeoutRef.current);
@@ -572,41 +507,26 @@ export default function Home() {
   const activeScore = liveScore ?? score;
   const statusText = useMemo(() => {
     if (activeScore == null) return "Draw a circle in one smooth stroke.";
-    if (activeScore >= 90) return `Beno-level circle: ${activeScore}%`;
-    return `Your circle score: ${activeScore}%. ${isDrawing ? "Keep going..." : "Try again!"
-      }`;
+    if (activeScore >= 92) return `Prize tier unlocked: ${activeScore}%`;
+    return `Your circle score: ${activeScore}%. ${isDrawing ? "Keep going..." : "Aim for 92%+"}`;
   }, [activeScore, isDrawing]);
 
-  const ringPercent = Math.max(0, Math.min(100, activeScore ?? 0));
-  const ringColor = getColorByScore(activeScore ?? 0).hex;
   const panelClass = [
-    "w-full max-w-xl",
-    isPulse
-      ? "rounded-3xl bg-gradient-to-br from-slate-900/80 via-slate-950/80 to-[#0a1628] p-4 shadow-[0_20px_70px_rgba(8,47,73,0.35)] ring-1 ring-cyan-500/25 backdrop-blur"
-      : isAurora
-        ? "rounded-3xl bg-gradient-to-br from-[#120c1e]/80 via-[#0d1b2a]/90 to-[#0b1220]/90 p-4 shadow-[0_22px_80px_rgba(109,40,217,0.25)] ring-1 ring-pink-400/25 backdrop-blur"
-        : "rounded-3xl bg-slate-900/70 p-3 shadow-2xl ring-1 ring-slate-700/60 backdrop-blur",
-    "transition-shadow",
+    "w-full max-w-xl rounded-3xl bg-gradient-to-br from-slate-900/80 via-slate-950/80 to-[#0a1628] p-4 shadow-[0_20px_70px_rgba(8,47,73,0.35)] ring-1 ring-cyan-500/25 backdrop-blur transition-shadow",
   ]
     .filter(Boolean)
     .join(" ");
   const panelStyle =
     won && flash
-      ? isPulse
-        ? { boxShadow: "0 0 0 1px rgba(34,211,238,0.6), 0 18px 48px rgba(14,165,233,0.35)" }
-        : isAurora
-          ? { boxShadow: "0 0 0 1px rgba(236,72,153,0.55), 0 18px 60px rgba(147,51,234,0.35)" }
-          : { boxShadow: "0 0 0 1px rgba(212,175,55,0.6), 0 18px 48px rgba(212,175,55,0.4)" }
+      ? { boxShadow: "0 0 0 1px rgba(34,211,238,0.6), 0 18px 48px rgba(14,165,233,0.35)" }
       : undefined;
-  const canvasClass = isPulse
-    ? "block h-auto max-h-[60vh] w-full touch-none select-none rounded-3xl bg-gradient-to-b from-slate-950 via-[#0b1224] to-slate-900 outline-none aspect-square shadow-inner"
-    : isAurora
-      ? "block h-auto max-h-[60vh] w-full touch-none select-none rounded-3xl bg-gradient-to-b from-[#120c1e] via-[#0d1b2a] to-[#0a1220] outline-none aspect-square shadow-inner"
-      : "block h-auto max-h-[60vh] w-full touch-none select-none rounded-2xl bg-white outline-none aspect-square";
+  const canvasClass =
+    "block h-auto max-h-[60vh] w-full touch-none select-none rounded-3xl bg-gradient-to-b from-slate-950 via-[#0b1224] to-slate-900 outline-none aspect-square shadow-inner";
 
   return (
     <div className="relative flex h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950 via-[#0a0a0a] to-black text-slate-50">
       <BackgroundDeco />
+      <SideBeams />
       {won && <Confetti />}
       <WinningModal isOpen={modalOpen} prize={prize} onClose={() => setModalOpen(false)} />
 
@@ -633,7 +553,7 @@ export default function Home() {
             Circle Master
           </h1>
           <p className="mt-3 text-sm text-slate-300 sm:text-base">
-            Aim for a 90%+ circle to win exclusive Beno prizes.
+            Aim for a 92%+ circle to unlock the Pulse Grid prizes.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-medium">
             <span className="rounded-full bg-[#D4AF37]/10 px-3 py-1 text-[#D4AF37] ring-1 ring-[#D4AF37]/30">
@@ -646,81 +566,18 @@ export default function Home() {
               Water toys
             </span>
           </div>
-          <div className="mt-5 flex justify-center">
-            <div className="flex items-center gap-2 rounded-full bg-white/5 px-2 py-1 ring-1 ring-white/10 backdrop-blur">
-              <span className="rounded-full bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                Theme
-              </span>
-              <button
-                aria-pressed={themeMode === "classic"}
-                onClick={() => setThemeMode("classic")}
-                className={[
-                  "rounded-full px-3 py-1 text-xs font-semibold transition",
-                  themeMode === "classic"
-                    ? "bg-[#D4AF37] text-black shadow-lg"
-                    : "text-slate-200 hover:text-white",
-                ].join(" ")}
-              >
-                Classic
-              </button>
-              <button
-                aria-pressed={isPulse}
-                onClick={() => setThemeMode("pulse")}
-                className={[
-                  "rounded-full px-3 py-1 text-xs font-semibold transition",
-                  isPulse ? "bg-cyan-500 text-black shadow-lg" : "text-slate-200 hover:text-white",
-                ].join(" ")}
-              >
-                Pulse Grid
-              </button>
-              <button
-                aria-pressed={isAurora}
-                onClick={() => setThemeMode("aurora")}
-                className={[
-                  "rounded-full px-3 py-1 text-xs font-semibold transition",
-                  isAurora
-                    ? "bg-pink-500 text-white shadow-lg"
-                    : "text-slate-200 hover:text-white",
-                ].join(" ")}
-              >
-                Aurora Veil
-              </button>
-            </div>
-          </div>
         </header>
 
         <div ref={containerRef} className={panelClass} style={panelStyle}>
           <div className="relative">
-            {themeMode === "classic" && (
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-2xl z-30"
-                style={{
-                  background:
-                    activeScore != null
-                      ? `conic-gradient(${ringColor} ${ringPercent}%, #1e293b ${ringPercent}%)`
-                      : undefined,
-                  WebkitMask:
-                    "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0)",
-                  mask: "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0)",
-                  opacity: activeScore != null ? 1 : 0,
-                  transition: "opacity 200ms ease",
-                }}
-              />
-            )}
-            {isPulse && <NeonBackdrop />}
-            {isAurora && <AuroraBackdrop />}
-            {isPulse && <TouchRipples ripples={touchRipples} />}
+            <NeonBackdrop />
+            <TouchRipples ripples={touchRipples} />
             <canvas
               ref={canvasRef}
               className={canvasClass}
               style={{
                 touchAction: "none",
-                boxShadow: isPulse
-                  ? "inset 0 0 26px rgba(34,211,238,0.15)"
-                  : isAurora
-                    ? "inset 0 0 28px rgba(236,72,153,0.22)"
-                    : undefined,
+                boxShadow: "inset 0 0 26px rgba(34,211,238,0.15)",
                 position: "relative",
                 zIndex: 20,
               }}
