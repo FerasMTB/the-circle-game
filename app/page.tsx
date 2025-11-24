@@ -400,9 +400,10 @@ export default function Home() {
     setIsDrawing(true);
     const pt = eventToPoint(e);
     pointsRef.current = [pt];
-    pushRipple(pt);
+    pushRipple();
     setWon(false);
     setCelebrating(false);
+    setPrize("");
     setFlash(false);
     setScore(null);
     setLiveScore(null);
@@ -427,13 +428,10 @@ export default function Home() {
     } else {
       const pt = eventToPoint(e);
       pointsRef.current.push(pt);
-      pushRipple(pt);
+      pushRipple();
     }
     if (coalesced && coalesced.length > 0) {
-      const canvas = canvasRef.current!;
-      const rect = canvas.getBoundingClientRect();
-      const last = coalesced[coalesced.length - 1];
-      pushRipple({ x: last.clientX - rect.left, y: last.clientY - rect.top });
+      pushRipple();
     }
     requestDraw();
   };
@@ -490,6 +488,7 @@ export default function Home() {
     setLiveScore(null);
     setWon(false);
     setCelebrating(false);
+    setPrize("");
     setModalOpen(false);
     setFlash(false);
     setTouchRipples([]);
@@ -529,7 +528,6 @@ export default function Home() {
         prize={prize}
         onClose={() => {
           setModalOpen(false);
-          setCelebrating(false);
         }}
       />
 
@@ -593,6 +591,13 @@ export default function Home() {
             {won && <VictoryAura />}
             {won && <WinRays />}
             {won && flash && <WinBurst />}
+            {won && prize && !isDrawing && (
+              <div className="pointer-events-none absolute inset-x-6 top-4 z-50 flex justify-center">
+                <div className="rounded-full bg-black/70 px-4 py-2 text-sm font-semibold text-[#D4AF37] ring-1 ring-[#D4AF37]/50 shadow-lg shadow-cyan-500/20 backdrop-blur">
+                  {prize}
+                </div>
+              </div>
+            )}
             {/* Floating live score badge */}
             <div
               className={[
