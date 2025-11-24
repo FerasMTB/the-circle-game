@@ -28,71 +28,96 @@ export default function Confetti() {
       color: string;
       size: number;
       drift: number;
+      life: number;
+      maxLife: number;
     };
 
-    const particles: Particle[] = [];
+    let particles: Particle[] = [];
     const colors = ["#D4AF37", "#ffffff", "#000000", "#facc15", "#38bdf8"];
-    const start = performance.now();
-    const lifespan = 12000;
+    const emitters = [
+      { x: () => window.innerWidth / 2, y: () => window.innerHeight / 2 },
+      { x: () => window.innerWidth * 0.18 + Math.random() * 40, y: () => window.innerHeight * 0.22 },
+      { x: () => window.innerWidth * 0.82 + Math.random() * 40, y: () => window.innerHeight * 0.25 },
+      { x: () => window.innerWidth * 0.24 + Math.random() * 30, y: () => window.innerHeight * 0.82 },
+      { x: () => window.innerWidth * 0.78 + Math.random() * 30, y: () => window.innerHeight * 0.75 },
+    ];
 
-    for (let i = 0; i < 240; i++) {
-      particles.push({
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-        vx: (Math.random() - 0.5) * 12,
-        vy: (Math.random() - 0.5) * 12 - 6,
-        rot: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 0.25,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: Math.random() * 7 + 3,
-        drift: Math.random() * Math.PI * 2,
-      });
-    }
+    const spawnBurst = () => {
+      const origin = emitters[Math.floor(Math.random() * emitters.length)];
+      const count = 55;
+      for (let i = 0; i < count; i++) {
+        const maxLife = 2200 + Math.random() * 800;
+        particles.push({
+          x: origin.x(),
+          y: origin.y(),
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.5) * 12 - 6,
+          rot: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 0.25,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          size: Math.random() * 7 + 3,
+          drift: Math.random() * Math.PI * 2,
+          life: maxLife,
+          maxLife,
+        });
+      }
+      // Keep particle count in check
+      if (particles.length > 2000) {
+        particles = particles.slice(particles.length - 2000);
+      }
+    };
+
+    spawnBurst();
+    const burstTimer = window.setInterval(spawnBurst, 300);
 
     let animationId: number;
+    let last = performance.now();
 
     const animate = () => {
       const now = performance.now();
-      const elapsed = now - start;
-      const fade = Math.max(0, 1 - elapsed / lifespan);
+      const delta = now - last;
+      last = now;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      particles.forEach((p, idx) => {
-        const wobble = Math.sin(elapsed / 600 + p.drift + idx) * 0.6;
+      particles = particles.filter((p, idx) => {
+        const wobble = Math.sin(now / 600 + p.drift + idx) * 0.6;
         p.x += p.vx + wobble;
         p.y += p.vy;
         p.vy += 0.12; // Gravity
         p.vx *= 0.995;
         p.rot += p.rotSpeed;
+        p.life -= delta;
+        if (p.life <= 0) return false;
 
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot);
-        ctx.globalAlpha = Math.min(1, fade + 0.2);
+        const alpha = Math.max(0, p.life / p.maxLife);
+        ctx.globalAlpha = Math.min(1, alpha + 0.2);
         ctx.fillStyle = p.color;
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.5);
         ctx.restore();
+
+        return true;
       });
 
       // Orbiting sparks for extra motion
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       for (let i = 0; i < 18; i++) {
-        const angle = (elapsed / 400 + i * 20) * (Math.PI / 180);
-        const radius = 40 + (elapsed / 20 % 120);
+        const angle = (now / 400 + i * 20) * (Math.PI / 180);
+        const radius = 40 + ((now / 20) % 120);
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
         ctx.beginPath();
         ctx.fillStyle = "rgba(255,255,255,0.35)";
-        ctx.globalAlpha = Math.max(0, Math.min(1, fade + 0.1));
+        ctx.globalAlpha = 0.8;
         ctx.arc(x, y, 2.5, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      if (elapsed < lifespan * 1.3) {
-        animationId = requestAnimationFrame(animate);
-      }
+      animationId = requestAnimationFrame(animate);
     };
 
     animate();
@@ -100,9 +125,10 @@ export default function Confetti() {
 
     return () => {
       cancelAnimationFrame(animationId);
+      window.clearInterval(burstTimer);
       window.removeEventListener("resize", resize);
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-50" />;
+  return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-[60]" />;
 }

@@ -122,7 +122,7 @@ function TouchRipples({ ripples }: { ripples: Ripple[] }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl z-10 mix-blend-screen"
+      className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl z-30 mix-blend-screen"
     >
       {ripples.map((r) => (
         <span
@@ -137,7 +137,7 @@ function TouchRipples({ ripples }: { ripples: Ripple[] }) {
 
 function VictoryAura() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 rounded-3xl">
+    <div aria-hidden className="pointer-events-none absolute inset-0 rounded-3xl z-30">
       <div
         className="absolute inset-[-30%] rounded-full blur-3xl opacity-70 animate-slow-spin"
         style={{
@@ -164,7 +164,7 @@ function VictoryAura() {
 
 function WinRays() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
+    <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center z-40">
       <div className="relative h-72 w-72">
         {[...Array(14)].map((_, i) => (
           <div
@@ -185,7 +185,7 @@ function WinRays() {
 
 function SideBeams() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
       <div className="absolute left-[-8%] top-0 h-full w-24 bg-gradient-to-r from-cyan-500/0 via-cyan-500/18 to-transparent blur-3xl animate-beam-slide" />
       <div className="absolute right-[-8%] top-0 h-full w-24 bg-gradient-to-l from-amber-300/0 via-amber-300/14 to-transparent blur-3xl animate-beam-slide-slow" />
       <div className="absolute inset-y-0 left-0 w-full bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.06),transparent_45%)]" />
@@ -207,7 +207,6 @@ export default function Home() {
   const pointsRef = useRef<Point[]>([]);
   const drawingRef = useRef(false);
   const rafRef = useRef<number | null>(null);
-  const rippleIdRef = useRef(0);
   const flashTimeoutRef = useRef<number | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [liveScore, setLiveScore] = useState<number | null>(null);
@@ -216,8 +215,8 @@ export default function Home() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [prize, setPrize] = useState("");
+  const [celebrating, setCelebrating] = useState(false);
   const [touchRipples, setTouchRipples] = useState<Ripple[]>([]);
-  const lastRippleRef = useRef(0);
   const lastLiveUpdateRef = useRef(0);
 
   // Memoize line style to avoid re-allocations
@@ -388,15 +387,9 @@ export default function Home() {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const pushRipple = (pt: Point) => {
-    const now = performance.now();
-    if (now - lastRippleRef.current < 70) return;
-    lastRippleRef.current = now;
-    const id = rippleIdRef.current++;
-    setTouchRipples((prev) => [...prev.slice(-10), { id, x: pt.x, y: pt.y }]);
-    window.setTimeout(() => {
-      setTouchRipples((prev) => prev.filter((r) => r.id !== id));
-    }, 1000);
+  const pushRipple = () => {
+    // Ripples disabled for now to keep the view clean while drawing.
+    return;
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -409,6 +402,7 @@ export default function Home() {
     pointsRef.current = [pt];
     pushRipple(pt);
     setWon(false);
+    setCelebrating(false);
     setFlash(false);
     setScore(null);
     setLiveScore(null);
@@ -462,6 +456,7 @@ export default function Home() {
     setWon(isWin);
 
     if (isWin) {
+      setCelebrating(true);
       triggerWinFlash();
       let reward = PRIZES[0];
       if (result.score === 100) reward = PRIZES[3];
@@ -494,6 +489,7 @@ export default function Home() {
     setScore(null);
     setLiveScore(null);
     setWon(false);
+    setCelebrating(false);
     setModalOpen(false);
     setFlash(false);
     setTouchRipples([]);
@@ -527,8 +523,15 @@ export default function Home() {
     <div className="relative flex h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950 via-[#0a0a0a] to-black text-slate-50">
       <BackgroundDeco />
       <SideBeams />
-      {won && <Confetti />}
-      <WinningModal isOpen={modalOpen} prize={prize} onClose={() => setModalOpen(false)} />
+      {celebrating && <Confetti />}
+      <WinningModal
+        isOpen={modalOpen}
+        prize={prize}
+        onClose={() => {
+          setModalOpen(false);
+          setCelebrating(false);
+        }}
+      />
 
       <div className="relative mx-auto flex max-h-[92vh] w-full max-w-3xl flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
         <header className="mb-6 w-full max-w-xl text-center">
@@ -569,15 +572,15 @@ export default function Home() {
         </header>
 
         <div ref={containerRef} className={panelClass} style={panelStyle}>
-          <div className="relative">
+          <div className="relative overflow-hidden rounded-3xl">
             <NeonBackdrop />
-            <TouchRipples ripples={touchRipples} />
+            {touchRipples.length > 0 && <TouchRipples ripples={touchRipples} />}
             <canvas
               ref={canvasRef}
               className={canvasClass}
               style={{
                 touchAction: "none",
-                boxShadow: "inset 0 0 26px rgba(34,211,238,0.15)",
+                boxShadow: isDrawing ? "none" : "inset 0 0 26px rgba(34,211,238,0.15)",
                 position: "relative",
                 zIndex: 20,
               }}
