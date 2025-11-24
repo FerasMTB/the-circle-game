@@ -7,6 +7,8 @@ import Confetti from "../components/Confetti";
 import WinningModal from "../components/WinningModal";
 
 type Point = { x: number; y: number };
+type Ripple = { id: number; x: number; y: number };
+type ThemeMode = "classic" | "pulse" | "aurora";
 
 // Compute circle score and geometry given a set of stroke points.
 function computeCircleScore(points: Point[]) {
@@ -94,6 +96,111 @@ function WinBurst() {
   );
 }
 
+function NeonBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl z-0">
+      <div
+        className="absolute inset-[-30%] opacity-40 blur-3xl animate-slow-spin"
+        style={{
+          background:
+            "conic-gradient(from 120deg at 50% 50%, rgba(34,211,238,0.2), rgba(244,114,182,0.08), rgba(34,197,94,0.18), rgba(34,211,238,0.2))",
+        }}
+      />
+      <div
+        className="absolute inset-0 opacity-50"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(0deg, rgba(255,255,255,0.06) 1px, transparent 1px)",
+          backgroundSize: "26px 26px",
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-slate-900/40 to-indigo-700/10 mix-blend-screen" />
+    </div>
+  );
+}
+
+function TouchRipples({ ripples }: { ripples: Ripple[] }) {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl z-10 mix-blend-screen"
+    >
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          className="ripple-dot absolute h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-300/14 ring-2 ring-cyan-200/30 backdrop-blur-sm shadow-[0_0_30px_rgba(34,211,238,0.35)]"
+          style={{ left: r.x, top: r.y }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function VictoryAura() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 rounded-3xl">
+      <div
+        className="absolute inset-[-30%] rounded-full blur-3xl opacity-70 animate-slow-spin"
+        style={{
+          background:
+            "conic-gradient(from 45deg at 50% 50%, rgba(212,175,55,0.24), rgba(56,189,248,0.08), rgba(34,197,94,0.22), rgba(212,175,55,0.24))",
+        }}
+      />
+      <div className="absolute left-6 top-6 h-28 w-28 rounded-full bg-amber-300/15 blur-3xl animate-float-slow" />
+      <div className="absolute right-8 bottom-10 h-24 w-24 rounded-full bg-sky-400/20 blur-3xl animate-float-slower" />
+      {[...Array(6)].map((_, idx) => (
+        <div
+          key={idx}
+          className="absolute h-2 w-2 rounded-full bg-white/90 animate-sparkle"
+          style={{
+            left: `${8 + idx * 14}%`,
+            top: idx % 2 === 0 ? "20%" : "72%",
+            animationDelay: `${idx * 0.35}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AuroraBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl z-0">
+      <div className="absolute inset-[-25%] bg-[conic-gradient(from_220deg_at_50%_50%,rgba(236,72,153,0.12),rgba(14,165,233,0.12),rgba(52,211,153,0.08),rgba(236,72,153,0.12))] blur-3xl opacity-65 animate-slow-spin" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(236,72,153,0.28),transparent_35%),radial-gradient(circle_at_80%_30%,rgba(56,189,248,0.2),transparent_35%),radial-gradient(circle_at_40%_80%,rgba(52,211,153,0.2),transparent_35%)] mix-blend-screen" />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(120deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(300deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
+          backgroundSize: "42px 42px",
+        }}
+      />
+    </div>
+  );
+}
+
+function WinRays() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <div className="relative h-72 w-72">
+        {[...Array(14)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute left-1/2 top-1/2 h-40 w-[2px] origin-bottom bg-gradient-to-b from-white/80 via-amber-200/60 to-transparent animate-ray-spin"
+            style={{
+              transform: `rotate(${(360 / 14) * i}deg) translateY(-32px)`,
+              animationDelay: `${i * 0.08}s`,
+            }}
+          />
+        ))}
+        <div className="absolute inset-6 rounded-full border border-white/25 blur-sm" />
+        <div className="absolute inset-10 rounded-full border border-amber-200/25 blur-sm animate-pulse-slow" />
+      </div>
+    </div>
+  );
+}
+
 const PRIZES = [
   "10% Discount on Next Rental",
   "Free Car Rent (1 Day)",
@@ -109,6 +216,8 @@ export default function Home() {
   const pointsRef = useRef<Point[]>([]);
   const drawingRef = useRef(false);
   const rafRef = useRef<number | null>(null);
+  const rippleIdRef = useRef(0);
+  const flashTimeoutRef = useRef<number | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [liveScore, setLiveScore] = useState<number | null>(null);
   const [won, setWon] = useState(false);
@@ -116,16 +225,26 @@ export default function Home() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [prize, setPrize] = useState("");
+  const [themeMode, setThemeMode] = useState<ThemeMode>("classic");
+  const [touchRipples, setTouchRipples] = useState<Ripple[]>([]);
+  const lastRippleRef = useRef(0);
   const lastLiveUpdateRef = useRef(0);
+  const isPulse = themeMode === "pulse";
+  const isAurora = themeMode === "aurora";
+  const isAltTheme = isPulse || isAurora;
 
   // Memoize line style to avoid re-allocations
   const lineStyle = useMemo(
     () => ({
       width: 5,
-      color: "#020617", // slate-950
-      shadowColor: "rgba(0,0,0,0.06)",
+      color: isPulse ? "#06b6d4" : isAurora ? "#f472b6" : "#020617",
+      shadowColor: isPulse
+        ? "rgba(56,189,248,0.35)"
+        : isAurora
+          ? "rgba(236,72,153,0.35)"
+          : "rgba(0,0,0,0.06)",
     }),
-    []
+    [isAurora, isPulse]
   );
 
   // Resize and prepare the canvas for high-DPI rendering.
@@ -178,14 +297,13 @@ export default function Home() {
     };
   }, [lineStyle]);
 
-  // Win flash animation toggle
   useEffect(() => {
-    if (!won) return;
-    setFlash(true);
-    // Let the Beno congrats effect linger a bit longer
-    const t = window.setTimeout(() => setFlash(false), 2800);
-    return () => window.clearTimeout(t);
-  }, [won]);
+    return () => {
+      if (flashTimeoutRef.current) {
+        window.clearTimeout(flashTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Render the current stroke and overlay, computing score live
   const render = () => {
@@ -198,9 +316,22 @@ export default function Home() {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Premium white canvas background
+    // Background
     ctx.save();
-    ctx.fillStyle = "#ffffff";
+    if (isPulse) {
+      const gradient = ctx.createLinearGradient(0, 0, w, h);
+      gradient.addColorStop(0, "#0b1224");
+      gradient.addColorStop(1, "#0f172a");
+      ctx.fillStyle = gradient;
+    } else if (isAurora) {
+      const gradient = ctx.createLinearGradient(0, 0, w, h);
+      gradient.addColorStop(0, "#130a1a");
+      gradient.addColorStop(0.5, "#0d1b2a");
+      gradient.addColorStop(1, "#0b1220");
+      ctx.fillStyle = gradient;
+    } else {
+      ctx.fillStyle = "#ffffff";
+    }
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
@@ -238,19 +369,19 @@ export default function Home() {
       ctx.lineWidth = lineStyle.width + 6;
       ctx.strokeStyle = color.rgba(0.8);
       ctx.shadowColor = color.rgba(0.9);
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = isAltTheme ? 26 : 18;
       ctx.stroke();
       ctx.restore();
 
       // Core pass
       ctx.lineWidth = lineStyle.width;
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = won ? "#22c55e" : "#020617";
+      ctx.shadowBlur = isAltTheme ? 2 : 0;
+      ctx.strokeStyle = won ? "#22c55e" : lineStyle.color;
       ctx.stroke();
       ctx.restore();
     }
 
-    if (res) {
+    if (res && !isAltTheme) {
       const { center, radius, score: s } = res;
       const color = getColorByScore(s);
       ctx.save();
@@ -269,6 +400,47 @@ export default function Home() {
       ctx.arc(center.x, center.y, 3, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+    } else if (res && isPulse) {
+      const { center, radius } = res;
+      ctx.save();
+      ctx.setLineDash([4, 12]);
+      ctx.globalAlpha = 0.65;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(56,189,248,0.4)";
+      ctx.beginPath();
+      ctx.moveTo(center.x - radius, center.y);
+      ctx.lineTo(center.x + radius, center.y);
+      ctx.moveTo(center.x, center.y - radius);
+      ctx.lineTo(center.x, center.y + radius);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(59,130,246,0.9)";
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (res && isAurora) {
+      const { center, radius } = res;
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "rgba(236,72,153,0.45)";
+      ctx.setLineDash([14, 10]);
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, radius * 0.92, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([6, 10]);
+      ctx.strokeStyle = "rgba(14,165,233,0.35)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, radius * 1.08, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(236,72,153,0.9)";
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
   };
 
@@ -284,14 +456,29 @@ export default function Home() {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
+  const pushRipple = (pt: Point) => {
+    if (!isPulse) return;
+    const now = performance.now();
+    if (now - lastRippleRef.current < 70) return;
+    lastRippleRef.current = now;
+    const id = rippleIdRef.current++;
+    setTouchRipples((prev) => [...prev.slice(-10), { id, x: pt.x, y: pt.y }]);
+    window.setTimeout(() => {
+      setTouchRipples((prev) => prev.filter((r) => r.id !== id));
+    }, 1000);
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.setPointerCapture(e.pointerId);
     drawingRef.current = true;
     setIsDrawing(true);
-    pointsRef.current = [eventToPoint(e)];
+    const pt = eventToPoint(e);
+    pointsRef.current = [pt];
+    pushRipple(pt);
     setWon(false);
+    setFlash(false);
     setScore(null);
     setLiveScore(null);
     setModalOpen(false); // Close modal if starting new draw
@@ -302,8 +489,7 @@ export default function Home() {
     if (!drawingRef.current) return;
 
     // Prefer coalesced events for smoothness where supported
-    const anyEvent = e as any;
-    const coalesced: PointerEvent[] | undefined = anyEvent.getCoalescedEvents?.();
+    const coalesced: PointerEvent[] | undefined = e.nativeEvent.getCoalescedEvents?.();
     if (coalesced && coalesced.length > 0) {
       const canvas = canvasRef.current!;
       const rect = canvas.getBoundingClientRect();
@@ -314,9 +500,23 @@ export default function Home() {
         });
       }
     } else {
-      pointsRef.current.push(eventToPoint(e));
+      const pt = eventToPoint(e);
+      pointsRef.current.push(pt);
+      pushRipple(pt);
+    }
+    if (isPulse && coalesced && coalesced.length > 0) {
+      const canvas = canvasRef.current!;
+      const rect = canvas.getBoundingClientRect();
+      const last = coalesced[coalesced.length - 1];
+      pushRipple({ x: last.clientX - rect.left, y: last.clientY - rect.top });
     }
     requestDraw();
+  };
+
+  const triggerWinFlash = () => {
+    if (flashTimeoutRef.current) window.clearTimeout(flashTimeoutRef.current);
+    setFlash(true);
+    flashTimeoutRef.current = window.setTimeout(() => setFlash(false), 5200);
   };
 
   const finishStroke = () => {
@@ -331,9 +531,14 @@ export default function Home() {
     setWon(isWin);
 
     if (isWin) {
+      triggerWinFlash();
       const randomPrize = PRIZES[Math.floor(Math.random() * PRIZES.length)];
       setPrize(randomPrize);
       setTimeout(() => setModalOpen(true), 1000); // Delay modal slightly for effect
+    } else if (flashTimeoutRef.current) {
+      window.clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = null;
+      setFlash(false);
     }
 
     requestDraw();
@@ -355,6 +560,12 @@ export default function Home() {
     setLiveScore(null);
     setWon(false);
     setModalOpen(false);
+    setFlash(false);
+    setTouchRipples([]);
+    if (flashTimeoutRef.current) {
+      window.clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = null;
+    }
     requestDraw();
   };
 
@@ -368,6 +579,30 @@ export default function Home() {
 
   const ringPercent = Math.max(0, Math.min(100, activeScore ?? 0));
   const ringColor = getColorByScore(activeScore ?? 0).hex;
+  const panelClass = [
+    "w-full max-w-xl",
+    isPulse
+      ? "rounded-3xl bg-gradient-to-br from-slate-900/80 via-slate-950/80 to-[#0a1628] p-4 shadow-[0_20px_70px_rgba(8,47,73,0.35)] ring-1 ring-cyan-500/25 backdrop-blur"
+      : isAurora
+        ? "rounded-3xl bg-gradient-to-br from-[#120c1e]/80 via-[#0d1b2a]/90 to-[#0b1220]/90 p-4 shadow-[0_22px_80px_rgba(109,40,217,0.25)] ring-1 ring-pink-400/25 backdrop-blur"
+        : "rounded-3xl bg-slate-900/70 p-3 shadow-2xl ring-1 ring-slate-700/60 backdrop-blur",
+    "transition-shadow",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const panelStyle =
+    won && flash
+      ? isPulse
+        ? { boxShadow: "0 0 0 1px rgba(34,211,238,0.6), 0 18px 48px rgba(14,165,233,0.35)" }
+        : isAurora
+          ? { boxShadow: "0 0 0 1px rgba(236,72,153,0.55), 0 18px 60px rgba(147,51,234,0.35)" }
+          : { boxShadow: "0 0 0 1px rgba(212,175,55,0.6), 0 18px 48px rgba(212,175,55,0.4)" }
+      : undefined;
+  const canvasClass = isPulse
+    ? "block h-auto max-h-[60vh] w-full touch-none select-none rounded-3xl bg-gradient-to-b from-slate-950 via-[#0b1224] to-slate-900 outline-none aspect-square shadow-inner"
+    : isAurora
+      ? "block h-auto max-h-[60vh] w-full touch-none select-none rounded-3xl bg-gradient-to-b from-[#120c1e] via-[#0d1b2a] to-[#0a1220] outline-none aspect-square shadow-inner"
+      : "block h-auto max-h-[60vh] w-full touch-none select-none rounded-2xl bg-white outline-none aspect-square";
 
   return (
     <div className="relative flex h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950 via-[#0a0a0a] to-black text-slate-50">
@@ -411,44 +646,93 @@ export default function Home() {
               Water toys
             </span>
           </div>
+          <div className="mt-5 flex justify-center">
+            <div className="flex items-center gap-2 rounded-full bg-white/5 px-2 py-1 ring-1 ring-white/10 backdrop-blur">
+              <span className="rounded-full bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                Theme
+              </span>
+              <button
+                aria-pressed={themeMode === "classic"}
+                onClick={() => setThemeMode("classic")}
+                className={[
+                  "rounded-full px-3 py-1 text-xs font-semibold transition",
+                  themeMode === "classic"
+                    ? "bg-[#D4AF37] text-black shadow-lg"
+                    : "text-slate-200 hover:text-white",
+                ].join(" ")}
+              >
+                Classic
+              </button>
+              <button
+                aria-pressed={isPulse}
+                onClick={() => setThemeMode("pulse")}
+                className={[
+                  "rounded-full px-3 py-1 text-xs font-semibold transition",
+                  isPulse ? "bg-cyan-500 text-black shadow-lg" : "text-slate-200 hover:text-white",
+                ].join(" ")}
+              >
+                Pulse Grid
+              </button>
+              <button
+                aria-pressed={isAurora}
+                onClick={() => setThemeMode("aurora")}
+                className={[
+                  "rounded-full px-3 py-1 text-xs font-semibold transition",
+                  isAurora
+                    ? "bg-pink-500 text-white shadow-lg"
+                    : "text-slate-200 hover:text-white",
+                ].join(" ")}
+              >
+                Aurora Veil
+              </button>
+            </div>
+          </div>
         </header>
 
-        <div
-          ref={containerRef}
-          className={[
-            "w-full max-w-xl",
-            "rounded-3xl bg-slate-900/70 p-3 shadow-2xl ring-1 ring-slate-700/60 backdrop-blur",
-            "transition-shadow",
-            won && flash ? "shadow-[#D4AF37]/50 ring-[#D4AF37]/80" : "",
-          ].join(" ")}
-        >
+        <div ref={containerRef} className={panelClass} style={panelStyle}>
           <div className="relative">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-2xl"
-              style={{
-                background:
-                  activeScore != null
-                    ? `conic-gradient(${ringColor} ${ringPercent}%, #1e293b ${ringPercent}%)`
-                    : undefined,
-                WebkitMask:
-                  "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0)",
-                mask: "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0)",
-                opacity: activeScore != null ? 1 : 0,
-                transition: "opacity 200ms ease",
-              }}
-            />
-            {won && flash && <WinBurst />}
+            {themeMode === "classic" && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-2xl z-30"
+                style={{
+                  background:
+                    activeScore != null
+                      ? `conic-gradient(${ringColor} ${ringPercent}%, #1e293b ${ringPercent}%)`
+                      : undefined,
+                  WebkitMask:
+                    "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0)",
+                  mask: "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0)",
+                  opacity: activeScore != null ? 1 : 0,
+                  transition: "opacity 200ms ease",
+                }}
+              />
+            )}
+            {isPulse && <NeonBackdrop />}
+            {isAurora && <AuroraBackdrop />}
+            {isPulse && <TouchRipples ripples={touchRipples} />}
             <canvas
               ref={canvasRef}
-              className="block h-auto max-h-[60vh] w-full touch-none select-none rounded-2xl bg-white outline-none aspect-square"
-              style={{ touchAction: "none" }}
+              className={canvasClass}
+              style={{
+                touchAction: "none",
+                boxShadow: isPulse
+                  ? "inset 0 0 26px rgba(34,211,238,0.15)"
+                  : isAurora
+                    ? "inset 0 0 28px rgba(236,72,153,0.22)"
+                    : undefined,
+                position: "relative",
+                zIndex: 20,
+              }}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerUp}
               onPointerLeave={onPointerLeave}
             />
+            {won && <VictoryAura />}
+            {won && <WinRays />}
+            {won && flash && <WinBurst />}
             {/* Floating live score badge */}
             <div
               className={[

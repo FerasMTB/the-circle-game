@@ -43,3 +43,44 @@ body {
   50% { background-position: 100% 50%; }
 }
 .animate-gradient { background-size: 300% 300%; animation: gradientShift 14s ease infinite; }
+
+@keyframes slowSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-slow-spin { animation: slowSpin 26s linear infinite; }
+
+@keyframes floatSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float-slow { animation: floatSoft 6s ease-in-out infinite; }
+.animate-float-slower { animation: floatSoft 9s ease-in-out infinite; }
+
+@keyframes sparklePop {
+  0% { transform: translateY(6px) scale(0.8); opacity: 0; }
+  20% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translateY(-30px) scale(1.25); opacity: 0; }
+}
+.animate-sparkle { animation: sparklePop 2.8s ease-in-out infinite; }
+
+@keyframes ripplePulse {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.9; }
+  60% { opacity: 0.35; }
+  100% { transform: translate(-50%, -50%) scale(2.3); opacity: 0; }
+}
+.ripple-dot { animation: ripplePulse 1s ease-out forwards; box-shadow: 0 0 20px rgba(56, 189, 248, 0.55); }
+
+@keyframes raySpin {
+  0% { transform: rotate(0deg) translateY(-32px); opacity: 0.6; }
+  60% { opacity: 1; }
+  100% { transform: rotate(360deg) translateY(-32px); opacity: 0.6; }
+}
+.animate-ray-spin { animation: raySpin 3.6s linear infinite; }
+
+@keyframes pulseSoft {
+  0%, 100% { transform: scale(0.98); opacity: 0.8; }
+  50% { transform: scale(1.02); opacity: 1; }
+}
+.animate-pulse-slow { animation: pulseSoft 4s ease-in-out infinite; }
