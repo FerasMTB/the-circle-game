@@ -1,10 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import Confetti from "../components/Confetti";
-import WinningModal from "../components/WinningModal";
 
 type Point = { x: number; y: number };
 
@@ -35,7 +31,7 @@ function computeCircleScore(points: Point[]) {
     sumR += d;
   }
   const r = sumR / points.length;
-  if (r <= 1e-3 || !Number.isFinite(r)) {
+  if (r <= 1e-3 || !isFinite(r)) {
     return { score: 0, center: { x: cx, y: cy }, radius: r, error: 1 };
   }
 
@@ -48,19 +44,19 @@ function computeCircleScore(points: Point[]) {
 
   // Score in [0, 100]
   let score = Math.max(0, 100 * (1 - error));
-  if (!Number.isFinite(score)) score = 0;
+  if (!isFinite(score)) score = 0;
   const scoreInt = Math.max(0, Math.min(100, Math.round(score)));
   return { score: scoreInt, center: { x: cx, y: cy }, radius: r, error };
 }
 
-// Beno-flavored color palette by score.
+// Choose a pleasant color based on score buckets
 function getColorByScore(score: number) {
   type RGB = { r: number; g: number; b: number };
   const colors: { min: number; rgb: RGB; hex: string }[] = [
-    { min: 90, rgb: { r: 212, g: 175, b: 55 }, hex: "#D4AF37" }, // Beno Gold
-    { min: 75, rgb: { r: 56, g: 189, b: 248 }, hex: "#38bdf8" }, // sky
-    { min: 55, rgb: { r: 248, g: 113, b: 113 }, hex: "#f87171" }, // soft red
-    { min: 0, rgb: { r: 30, g: 64, b: 175 }, hex: "#1d4ed8" }, // deep blue
+    { min: 95, rgb: { r: 16, g: 185, b: 129 }, hex: "#10b981" }, // emerald-500
+    { min: 80, rgb: { r: 59, g: 130, b: 246 }, hex: "#3b82f6" }, // blue-500
+    { min: 60, rgb: { r: 245, g: 158, b: 11 }, hex: "#f59e0b" }, // amber-500
+    { min: 0, rgb: { r: 239, g: 68, b: 68 }, hex: "#ef4444" }, // red-500
   ];
   const chosen = colors.find((c) => score >= c.min) ?? colors[colors.length - 1];
   return {
@@ -72,35 +68,12 @@ function getColorByScore(score: number) {
 function BackgroundDeco() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-gradient-to-tr from-[#D4AF37] to-amber-600 opacity-20 blur-3xl animate-blob" />
-      <div className="absolute -right-16 top-1/4 h-80 w-80 rounded-full bg-gradient-to-tr from-slate-800 to-slate-600 opacity-30 blur-3xl animate-blob animation-delay-2000" />
-      <div className="absolute left-1/3 bottom-0 h-96 w-96 rounded-full bg-gradient-to-tr from-[#D4AF37] to-yellow-200 opacity-10 blur-3xl animate-blob animation-delay-4000" />
+      <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-gradient-to-tr from-fuchsia-400 to-rose-400 opacity-40 blur-3xl animate-blob" />
+      <div className="absolute -right-16 top-1/4 h-80 w-80 rounded-full bg-gradient-to-tr from-sky-400 to-indigo-400 opacity-40 blur-3xl animate-blob animation-delay-2000" />
+      <div className="absolute left-1/3 bottom-0 h-96 w-96 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-400 opacity-40 blur-3xl animate-blob animation-delay-4000" />
     </div>
   );
 }
-
-function WinBurst() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <div className="relative flex items-center justify-center">
-        <div className="absolute h-32 w-32 rounded-full border border-[#D4AF37]/80 animate-ping" />
-        <div className="absolute h-44 w-44 rounded-full border border-[#D4AF37]/60 animate-ping animation-delay-2000" />
-        <div className="absolute h-56 w-56 rounded-full border border-white/40 animate-ping animation-delay-4000" />
-        <div className="relative rounded-full bg-gradient-to-r from-[#D4AF37] via-amber-200 to-[#D4AF37] px-4 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-black shadow-md">
-          BENO PERFECT
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const PRIZES = [
-  "10% Discount on Next Rental",
-  "Free Car Rent (1 Day)",
-  "Yacht Tour Discount (20%)",
-  "Exclusive Beno Merch",
-  "5% Discount",
-];
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -114,15 +87,13 @@ export default function Home() {
   const [won, setWon] = useState(false);
   const [flash, setFlash] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [prize, setPrize] = useState("");
   const lastLiveUpdateRef = useRef(0);
 
   // Memoize line style to avoid re-allocations
   const lineStyle = useMemo(
     () => ({
       width: 5,
-      color: "#020617", // slate-950
+      color: "#111827", // zinc-900
       shadowColor: "rgba(0,0,0,0.06)",
     }),
     []
@@ -180,11 +151,11 @@ export default function Home() {
 
   // Win flash animation toggle
   useEffect(() => {
-    if (!won) return;
-    setFlash(true);
-    // Let the Beno congrats effect linger a bit longer
-    const t = window.setTimeout(() => setFlash(false), 2800);
-    return () => window.clearTimeout(t);
+    if (won) {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 900);
+      return () => clearTimeout(t);
+    }
   }, [won]);
 
   // Render the current stroke and overlay, computing score live
@@ -198,7 +169,7 @@ export default function Home() {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Premium white canvas background
+    // premium white canvas background
     ctx.save();
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
@@ -236,7 +207,7 @@ export default function Home() {
       // Glow pass
       ctx.save();
       ctx.lineWidth = lineStyle.width + 6;
-      ctx.strokeStyle = color.rgba(0.8);
+      ctx.strokeStyle = color.rgba(0.75);
       ctx.shadowColor = color.rgba(0.9);
       ctx.shadowBlur = 18;
       ctx.stroke();
@@ -245,7 +216,7 @@ export default function Home() {
       // Core pass
       ctx.lineWidth = lineStyle.width;
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = won ? "#22c55e" : "#020617";
+      ctx.strokeStyle = won ? "#065f46" : "#111827";
       ctx.stroke();
       ctx.restore();
     }
@@ -294,7 +265,6 @@ export default function Home() {
     setWon(false);
     setScore(null);
     setLiveScore(null);
-    setModalOpen(false); // Close modal if starting new draw
     requestDraw();
   };
 
@@ -308,10 +278,7 @@ export default function Home() {
       const canvas = canvasRef.current!;
       const rect = canvas.getBoundingClientRect();
       for (const ce of coalesced) {
-        pointsRef.current.push({
-          x: ce.clientX - rect.left,
-          y: ce.clientY - rect.top,
-        });
+        pointsRef.current.push({ x: ce.clientX - rect.left, y: ce.clientY - rect.top });
       }
     } else {
       pointsRef.current.push(eventToPoint(e));
@@ -325,17 +292,7 @@ export default function Home() {
     const result = computeCircleScore(pointsRef.current);
     setScore(result.score);
     setLiveScore(result.score);
-
-    // Win at 90%+ for a Beno-level circle
-    const isWin = result.score >= 90;
-    setWon(isWin);
-
-    if (isWin) {
-      const randomPrize = PRIZES[Math.floor(Math.random() * PRIZES.length)];
-      setPrize(randomPrize);
-      setTimeout(() => setModalOpen(true), 1000); // Delay modal slightly for effect
-    }
-
+    setWon(result.score >= 95);
     requestDraw();
   };
 
@@ -354,62 +311,33 @@ export default function Home() {
     setScore(null);
     setLiveScore(null);
     setWon(false);
-    setModalOpen(false);
     requestDraw();
   };
 
   const activeScore = liveScore ?? score;
   const statusText = useMemo(() => {
     if (activeScore == null) return "Draw a circle in one smooth stroke.";
-    if (activeScore >= 90) return `Beno-level circle: ${activeScore}%`;
-    return `Your circle score: ${activeScore}%. ${isDrawing ? "Keep going..." : "Try again!"
-      }`;
+    if (activeScore >= 95) return `Legend! ${activeScore}% perfect circle 🎉`;
+    return `Your circle score: ${activeScore}%. ${isDrawing ? "Keep going…" : "Try again!"}`;
   }, [activeScore, isDrawing]);
-
   const ringPercent = Math.max(0, Math.min(100, activeScore ?? 0));
   const ringColor = getColorByScore(activeScore ?? 0).hex;
 
   return (
-    <div className="relative flex h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950 via-[#0a0a0a] to-black text-slate-50">
+    <div className="relative min-h-screen overflow-hidden text-zinc-900">
       <BackgroundDeco />
-      {won && <Confetti />}
-      <WinningModal isOpen={modalOpen} prize={prize} onClose={() => setModalOpen(false)} />
-
-      <div className="relative mx-auto flex max-h-[92vh] w-full max-w-3xl flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
-        <header className="mb-6 w-full max-w-xl text-center">
-          <div className="mb-4 flex justify-center">
-            <div className="flex items-center gap-3 rounded-full bg-white/5 px-4 py-2 ring-1 ring-white/15 backdrop-blur">
-              <Image
-                src="/logo-white.svg"
-                alt="Beno logo"
-                width={32}
-                height={32}
-                className="h-8 w-auto"
-              />
-              <div className="text-left">
-                <p className="text-[10px] uppercase tracking-[0.25em] text-[#D4AF37]">
-                  Beno Circle Lab
-                </p>
-                <p className="text-xs text-slate-100">Luxury experiences, drawn by hand.</p>
-              </div>
-            </div>
-          </div>
-          <h1 className="bg-gradient-to-r from-[#D4AF37] via-white to-[#D4AF37] bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl">
+      <div className="relative mx-auto flex max-w-3xl flex-col items-center px-6 py-14 sm:px-8">
+        <header className="mb-8 text-center">
+          <h1 className="bg-gradient-to-r from-fuchsia-600 via-sky-500 to-emerald-500 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-6xl animate-gradient">
             Circle Master
           </h1>
-          <p className="mt-3 text-sm text-slate-300 sm:text-base">
-            Aim for a 90%+ circle to win exclusive Beno prizes.
+          <p className="mt-3 text-lg text-zinc-700 sm:text-xl">
+            Draw the most perfect circle you can with one stroke.
           </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-medium">
-            <span className="rounded-full bg-[#D4AF37]/10 px-3 py-1 text-[#D4AF37] ring-1 ring-[#D4AF37]/30">
-              Supercars
-            </span>
-            <span className="rounded-full bg-sky-500/10 px-3 py-1 text-sky-200 ring-1 ring-sky-400/30">
-              Yachts
-            </span>
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-emerald-200 ring-1 ring-emerald-400/30">
-              Water toys
-            </span>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <span className="rounded-full bg-fuchsia-500/10 px-3 py-1 text-sm font-medium text-fuchsia-700 ring-1 ring-fuchsia-500/20">One stroke</span>
+            <span className="rounded-full bg-sky-500/10 px-3 py-1 text-sm font-medium text-sky-700 ring-1 ring-sky-500/20">Go smooth</span>
+            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-700 ring-1 ring-emerald-500/20">Aim for 95%+</span>
           </div>
         </header>
 
@@ -417,9 +345,9 @@ export default function Home() {
           ref={containerRef}
           className={[
             "w-full max-w-xl",
-            "rounded-3xl bg-slate-900/70 p-3 shadow-2xl ring-1 ring-slate-700/60 backdrop-blur",
+            "rounded-3xl bg-white p-3 shadow-lg ring-1 ring-black/5",
             "transition-shadow",
-            won && flash ? "shadow-[#D4AF37]/50 ring-[#D4AF37]/80" : "",
+            won && flash ? "shadow-emerald-300/60 ring-emerald-400" : "",
           ].join(" ")}
         >
           <div className="relative">
@@ -429,7 +357,7 @@ export default function Home() {
               style={{
                 background:
                   activeScore != null
-                    ? `conic-gradient(${ringColor} ${ringPercent}%, #1e293b ${ringPercent}%)`
+                    ? `conic-gradient(${ringColor} ${ringPercent}%, #e5e7eb ${ringPercent}%)`
                     : undefined,
                 WebkitMask:
                   "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0)",
@@ -438,10 +366,9 @@ export default function Home() {
                 transition: "opacity 200ms ease",
               }}
             />
-            {won && flash && <WinBurst />}
             <canvas
               ref={canvasRef}
-              className="block h-auto max-h-[60vh] w-full touch-none select-none rounded-2xl bg-white outline-none aspect-square"
+              className="block h-auto w-full touch-none select-none rounded-2xl bg-white outline-none aspect-square"
               style={{ touchAction: "none" }}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
@@ -459,11 +386,10 @@ export default function Home() {
               style={{
                 background:
                   activeScore != null
-                    ? `linear-gradient(135deg, ${getColorByScore(activeScore).hex}33, #020617dd)`
+                    ? `linear-gradient(135deg, ${getColorByScore(activeScore).hex}33, #ffffffcc)`
                     : undefined,
                 backdropFilter: "blur(6px)",
-                border: "1px solid rgba(15,23,42,0.55)",
-                color: "#e5e7eb",
+                border: "1px solid rgba(0,0,0,0.06)",
               }}
             >
               {activeScore != null ? `${activeScore}%` : ""}
@@ -471,20 +397,18 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mt-4 flex w-full max-w-xl flex-col items-center gap-4">
+        <div className="mt-8 flex w-full max-w-xl flex-col items-center gap-4">
           <div
             className={[
-              "text-center text-base sm:text-lg",
-              activeScore != null && activeScore >= 90
-                ? "text-[#D4AF37]"
-                : "text-slate-200",
+              "text-center text-lg",
+              activeScore != null && activeScore >= 95 ? "text-emerald-600" : "text-zinc-700",
             ].join(" ")}
           >
             {statusText}
           </div>
           <button
             onClick={clearAll}
-            className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D4AF37] via-amber-400 to-[#D4AF37] px-6 py-3 text-sm font-semibold text-black shadow-lg transition hover:from-amber-300 hover:via-amber-200 hover:to-amber-300 active:translate-y-px"
+            className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 to-sky-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-fuchsia-600 hover:to-sky-600 active:translate-y-px"
           >
             Clear / Try Again
           </button>
@@ -493,3 +417,4 @@ export default function Home() {
     </div>
   );
 }
+

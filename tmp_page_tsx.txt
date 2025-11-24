@@ -1,0 +1,315 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
+type Point = { x: number; y: number };
+
+// Compute circle score and geometry given a set of stroke points.
+function computeCircleScore(points: Point[]) {
+  if (!points || points.length < 12) {
+    return { score: 0, center: { x: 0, y: 0 }, radius: 0, error: 1 };
+  }
+
+  // Estimate center as centroid
+  let sumX = 0;
+  let sumY = 0;
+  for (const p of points) {
+    sumX += p.x;
+    sumY += p.y;
+  }
+  const cx = sumX / points.length;
+  const cy = sumY / points.length;
+
+  // Distances and average radius
+  const dists = new Array(points.length);
+  let sumR = 0;
+  for (let i = 0; i < points.length; i++) {
+    const dx = points[i].x - cx;
+    const dy = points[i].y - cy;
+    const d = Math.hypot(dx, dy);
+    dists[i] = d;
+    sumR += d;
+  }
+  const r = sumR / points.length;
+  if (r <= 1e-3 || !isFinite(r)) {
+    return { score: 0, center: { x: cx, y: cy }, radius: r, error: 1 };
+  }
+
+  // Error metric: average absolute radial deviation normalized by radius
+  let errSum = 0;
+  for (let i = 0; i < dists.length; i++) {
+    errSum += Math.abs(dists[i] - r);
+  }
+  const error = errSum / dists.length / r;
+
+  // Score in [0, 100]
+  let score = Math.max(0, 100 * (1 - error));
+  if (!isFinite(score)) score = 0;
+  const scoreInt = Math.max(0, Math.min(100, Math.round(score)));
+  return { score: scoreInt, center: { x: cx, y: cy }, radius: r, error };
+}
+
+export default function Home() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const pointsRef = useRef<Point[]>([]);
+  const drawingRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
+  const [score, setScore] = useState<number | null>(null);
+  const [won, setWon] = useState(false);
+  const [flash, setFlash] = useState(false);
+
+  // Memoize line style to avoid re-allocations
+  const lineStyle = useMemo(
+    () => ({
+      width: 5,
+      color: "#111827", // zinc-900
+      shadowColor: "rgba(0,0,0,0.06)",
+      highlight: "#10b981", // emerald-500
+    }),
+    []
+  );
+
+  // Resize and prepare the canvas for high-DPI rendering.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctxRef.current = ctx;
+
+    const resize = () => {
+      const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width));
+      const height = Math.max(1, Math.floor(rect.height));
+
+      // Set the internal pixel buffer to account for DPR
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      // Reset transform then scale so drawing uses CSS pixels
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+
+      // Clear on resize
+      ctx.clearRect(0, 0, width, height);
+      // Style
+      ctx.lineWidth = lineStyle.width;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = lineStyle.color;
+      ctx.shadowColor = lineStyle.shadowColor;
+      ctx.shadowBlur = 0;
+
+      // Reset drawing state
+      pointsRef.current = [];
+      drawingRef.current = false;
+    };
+
+    resize();
+
+    // Observe container size changes for responsive canvas
+    const ro = new ResizeObserver(() => resize());
+    if (containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      ro.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [lineStyle]);
+
+  // Win flash animation toggle
+  useEffect(() => {
+    if (won) {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 900);
+      return () => clearTimeout(t);
+    }
+  }, [won]);
+
+  // Render the current stroke and, optionally, the best-fit circle overlay.
+  const render = (opts?: { overlay?: { center: Point; radius: number } | null }) => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw border background subtly to feel premium
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    const pts = pointsRef.current;
+    if (pts.length > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      // Simple smoothing via quadratic curves
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i];
+        const p1 = pts[i + 1];
+        const mx = (p0.x + p1.x) / 2;
+        const my = (p0.y + p1.y) / 2;
+        ctx.quadraticCurveTo(p0.x, p0.y, mx, my);
+      }
+      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Optional overlay of the estimated perfect circle
+    if (opts?.overlay) {
+      const { center, radius } = opts.overlay;
+      ctx.save();
+      ctx.setLineDash([6, 10]);
+      ctx.lineDashOffset = 0;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = won ? "#10b981" : "#64748b"; // emerald-500 or slate-500
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      // Center dot
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = ctx.strokeStyle as string;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  };
+
+  // Schedule a single animation frame render.
+  const requestDraw = (overlay?: { center: Point; radius: number } | null) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => render({ overlay }));
+  };
+
+  // Map a pointer event to canvas-local CSS pixel coordinates.
+  const eventToPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.setPointerCapture(e.pointerId);
+    drawingRef.current = true;
+    pointsRef.current = [eventToPoint(e)];
+    setWon(false);
+    setScore(null);
+    requestDraw(null);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+
+    // Prefer coalesced events for smoothness where supported
+    const anyEvent = e as any;
+    const coalesced: PointerEvent[] | undefined = anyEvent.getCoalescedEvents?.();
+    if (coalesced && coalesced.length > 0) {
+      const canvas = canvasRef.current!;
+      const rect = canvas.getBoundingClientRect();
+      for (const ce of coalesced) {
+        pointsRef.current.push({ x: ce.clientX - rect.left, y: ce.clientY - rect.top });
+      }
+    } else {
+      pointsRef.current.push(eventToPoint(e));
+    }
+    requestDraw(null);
+  };
+
+  const finishStroke = () => {
+    drawingRef.current = false;
+    const result = computeCircleScore(pointsRef.current);
+    setScore(result.score);
+    setWon(result.score >= 95);
+    requestDraw({ center: result.center, radius: result.radius });
+  };
+
+  const onPointerUp = () => {
+    if (!drawingRef.current) return;
+    finishStroke();
+  };
+
+  const onPointerLeave = () => {
+    if (!drawingRef.current) return;
+    finishStroke();
+  };
+
+  const clearAll = () => {
+    pointsRef.current = [];
+    setScore(null);
+    setWon(false);
+    requestDraw(null);
+  };
+
+  const statusText = useMemo(() => {
+    if (score == null) return "Draw a circle in one smooth stroke.";
+    if (score >= 95) return `Legend! ${score}% perfect circle 🎉`;
+    return `Your circle score: ${score}%. Try again!`;
+  }, [score]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white text-zinc-900">
+      <div className="mx-auto flex max-w-3xl flex-col items-center px-6 py-14 sm:px-8">
+        <header className="mb-8 text-center">
+          <h1 className="text-5xl font-semibold tracking-tight sm:text-6xl">Circle Master</h1>
+          <p className="mt-3 text-lg text-zinc-600 sm:text-xl">
+            Draw the most perfect circle you can with one stroke.
+          </p>
+        </header>
+
+        <div
+          ref={containerRef}
+          className={[
+            "w-full max-w-xl",
+            "rounded-3xl bg-white p-3 shadow-lg ring-1 ring-black/5",
+            "transition-shadow",
+            won && flash ? "shadow-emerald-300/60 ring-emerald-400" : "",
+          ].join(" ")}
+        >
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              className="block h-auto w-full touch-none select-none rounded-2xl bg-white outline-none aspect-square"
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              onPointerLeave={onPointerLeave}
+            />
+          </div>
+        </div>
+
+        <div className="mt-8 flex w-full max-w-xl flex-col items-center gap-4">
+          <div
+            className={[
+              "text-center text-lg",
+              score != null && score >= 95 ? "text-emerald-600" : "text-zinc-700",
+            ].join(" ")}
+          >
+            {statusText}
+          </div>
+          <button
+            onClick={clearAll}
+            className="inline-flex items-center justify-center rounded-full bg-zinc-900 px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 active:translate-y-px"
+          >
+            Clear / Try Again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
