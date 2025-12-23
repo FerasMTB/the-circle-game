@@ -92,3 +92,28 @@ body {
 }
 .animate-beam-slide { animation: beamSlide 6s ease-in-out infinite alternate; }
 .animate-beam-slide-slow { animation: beamSlide 9s ease-in-out infinite alternate-reverse; }
+
+@keyframes snowDrift {
+  0% { background-position: 0 -80px, 30px -140px; }
+  100% { background-position: 0 220px, 60px 280px; }
+}
+.snow-overlay {
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.45) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 120px 120px, 180px 180px;
+  animation: snowDrift 20s linear infinite;
+}
+.snow-overlay-large {
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.45) 2px, transparent 2px),
+    radial-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+  background-size: 180px 180px, 260px 260px;
+  animation: snowDrift 26s linear infinite;
+}
+
+@keyframes holidayTwinkle {
+  0%, 100% { transform: translateY(0) scale(0.9); opacity: 0.6; }
+  50% { transform: translateY(-1px) scale(1.15); opacity: 1; }
+}
+.animate-holiday-twinkle { animation: holidayTwinkle 2.6s ease-in-out infinite; }

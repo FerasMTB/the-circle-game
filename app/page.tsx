@@ -70,12 +70,43 @@ function getColorByScore(score: number) {
   };
 }
 
+const MIN_POINT_DISTANCE = 1.4;
+
+function smoothPoints(points: Point[]) {
+  if (points.length < 3) return points;
+  const smoothed: Point[] = [points[0]];
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const next = points[i + 1];
+    smoothed.push({
+      x: (prev.x + curr.x + next.x) / 3,
+      y: (prev.y + curr.y + next.y) / 3,
+    });
+  }
+  smoothed.push(points[points.length - 1]);
+  return smoothed;
+}
+
 function BackgroundDeco() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-gradient-to-tr from-[#D4AF37] to-amber-600 opacity-20 blur-3xl animate-blob" />
+      <div className="absolute right-1/4 -top-16 h-64 w-64 rounded-full bg-gradient-to-tr from-rose-500 to-rose-900 opacity-15 blur-3xl animate-blob animation-delay-2000" />
       <div className="absolute -right-16 top-1/4 h-80 w-80 rounded-full bg-gradient-to-tr from-slate-800 to-slate-600 opacity-30 blur-3xl animate-blob animation-delay-2000" />
       <div className="absolute left-1/3 bottom-0 h-96 w-96 rounded-full bg-gradient-to-tr from-[#D4AF37] to-yellow-200 opacity-10 blur-3xl animate-blob animation-delay-4000" />
+      <div className="absolute -left-10 bottom-10 h-72 w-72 rounded-full bg-gradient-to-tr from-emerald-400 to-emerald-900 opacity-15 blur-3xl animate-blob animation-delay-4000" />
+    </div>
+  );
+}
+
+function SnowOverlay() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-[3] overflow-hidden">
+      <div className="snow-overlay absolute inset-0 opacity-65" />
+      <div className="snow-overlay-large absolute inset-0 opacity-40" />
+      <div className="snow-overlay absolute inset-0 scale-125 opacity-30 blur-sm" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40" />
     </div>
   );
 }
@@ -111,6 +142,13 @@ function NeonBackdrop() {
           backgroundImage:
             "linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(0deg, rgba(255,255,255,0.06) 1px, transparent 1px)",
           backgroundSize: "26px 26px",
+        }}
+      />
+      <div
+        className="absolute inset-0 opacity-60"
+        style={{
+          background:
+            "radial-gradient(circle at 18% 18%, rgba(34,197,94,0.18), transparent 45%), radial-gradient(circle at 82% 12%, rgba(239,68,68,0.18), transparent 45%)",
         }}
       />
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-slate-900/40 to-indigo-700/10 mix-blend-screen" />
@@ -185,7 +223,7 @@ function WinRays() {
 
 function SideBeams() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden z-[2]">
       <div className="absolute left-[-8%] top-0 h-full w-24 bg-gradient-to-r from-cyan-500/0 via-cyan-500/18 to-transparent blur-3xl animate-beam-slide" />
       <div className="absolute right-[-8%] top-0 h-full w-24 bg-gradient-to-l from-amber-300/0 via-amber-300/14 to-transparent blur-3xl animate-beam-slide-slow" />
       <div className="absolute inset-y-0 left-0 w-full bg-[radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.06),transparent_45%)]" />
@@ -193,6 +231,96 @@ function SideBeams() {
   );
 }
 
+function HolidayLights() {
+  const bulbs = ["#ef4444", "#22c55e", "#facc15", "#38bdf8"];
+  return (
+    <div aria-hidden className="pointer-events-none absolute left-12 right-12 top-2 z-40">
+      <div className="absolute inset-x-0 top-2 h-px bg-gradient-to-r from-transparent via-emerald-200/40 to-transparent" />
+      <div className="flex justify-between">
+        {Array.from({ length: 14 }).map((_, i) => {
+          const color = bulbs[i % bulbs.length];
+          return (
+            <span
+              key={i}
+              className="h-2.5 w-2.5 rounded-full animate-holiday-twinkle"
+              style={{
+                background: color,
+                boxShadow: `0 0 12px ${color}88`,
+                animationDelay: `${i * 0.18}s`,
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function HolidayScene() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-72 overflow-hidden sm:h-80">
+      <div className="absolute inset-0 bg-gradient-to-t from-[#05070f] via-[#0b1224]/80 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white/20 via-white/10 to-transparent blur-xl" />
+      <svg
+        className="absolute inset-x-0 bottom-0 h-32 w-full opacity-90"
+        viewBox="0 0 1200 200"
+        preserveAspectRatio="none"
+      >
+        <path
+          d="M0 150 C120 120 240 170 360 145 C480 120 600 170 720 145 C840 120 960 170 1080 145 L1200 200 L0 200 Z"
+          fill="#f8fafc"
+          fillOpacity="0.2"
+        />
+      </svg>
+      <svg
+        className="absolute inset-x-0 bottom-0 h-52 w-full opacity-90"
+        viewBox="0 0 1200 200"
+        preserveAspectRatio="none"
+      >
+        <polygon points="40,200 100,70 160,200" fill="#14532d" />
+        <rect x="94" y="170" width="14" height="30" fill="#0f2f1c" />
+        <polygon points="210,200 280,60 350,200" fill="#166534" />
+        <rect x="274" y="170" width="14" height="30" fill="#0f2f1c" />
+        <polygon points="420,200 500,80 580,200" fill="#14532d" />
+        <rect x="494" y="170" width="14" height="30" fill="#0f2f1c" />
+        <polygon points="720,200 790,65 860,200" fill="#166534" />
+        <rect x="784" y="170" width="14" height="30" fill="#0f2f1c" />
+        <polygon points="910,200 990,85 1070,200" fill="#14532d" />
+        <rect x="984" y="170" width="14" height="30" fill="#0f2f1c" />
+      </svg>
+      <svg
+        className="absolute bottom-6 left-8 h-60 w-44 opacity-95"
+        viewBox="0 0 160 220"
+      >
+        <polygon points="80,10 150,150 10,150" fill="#1f7a3b" />
+        <polygon points="80,40 160,190 0,190" fill="#1b6b35" />
+        <rect x="70" y="185" width="20" height="28" fill="#0f2f1c" />
+        <polygon
+          points="80,4 86,18 102,20 90,30 94,46 80,38 66,46 70,30 58,20 74,18"
+          fill="#facc15"
+        />
+        <circle cx="55" cy="95" r="4" fill="#facc15" />
+        <circle cx="95" cy="110" r="4" fill="#ef4444" />
+        <circle cx="70" cy="130" r="4" fill="#38bdf8" />
+        <circle cx="105" cy="145" r="4" fill="#22c55e" />
+      </svg>
+      <svg
+        className="absolute bottom-8 right-10 h-52 w-40 opacity-90"
+        viewBox="0 0 140 200"
+      >
+        <polygon points="70,20 130,150 10,150" fill="#1c7338" />
+        <polygon points="70,45 140,180 0,180" fill="#166534" />
+        <rect x="60" y="178" width="18" height="24" fill="#0f2f1c" />
+        <circle cx="55" cy="95" r="3.5" fill="#facc15" />
+        <circle cx="80" cy="115" r="3.5" fill="#ef4444" />
+        <circle cx="65" cy="135" r="3.5" fill="#38bdf8" />
+      </svg>
+      <div className="absolute inset-x-0 bottom-0 h-3 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+    </div>
+  );
+}
+
+const WIN_THRESHOLD = 92;
 const PRIZES = [
   "20% discount",
   "40% discount",
@@ -206,8 +334,14 @@ export default function Home() {
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const pointsRef = useRef<Point[]>([]);
   const drawingRef = useRef(false);
+  const drawingPointerIdRef = useRef<number | null>(null);
+  const activePointerIdsRef = useRef<Set<number>>(new Set());
+  const multiTouchRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const flashTimeoutRef = useRef<number | null>(null);
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winAudioRef = useRef<HTMLAudioElement | null>(null);
+  const loseAudioRef = useRef<HTMLAudioElement | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [liveScore, setLiveScore] = useState<number | null>(null);
   const [won, setWon] = useState(false);
@@ -217,6 +351,7 @@ export default function Home() {
   const [prize, setPrize] = useState("");
   const [celebrating, setCelebrating] = useState(false);
   const [touchRipples, setTouchRipples] = useState<Ripple[]>([]);
+  const [multiTouch, setMultiTouch] = useState(false);
   const lastLiveUpdateRef = useRef(0);
 
   // Memoize line style to avoid re-allocations
@@ -228,6 +363,48 @@ export default function Home() {
     }),
     []
   );
+
+  const setMultiTouchState = (value: boolean) => {
+    multiTouchRef.current = value;
+    setMultiTouch(value);
+  };
+
+  const startBackgroundAudio = () => {
+    const bg = bgAudioRef.current;
+    if (!bg || !bg.paused) return;
+    bg.play().catch(() => undefined);
+  };
+
+  const playEffect = (audio: HTMLAudioElement | null, volume: number) => {
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.volume = volume;
+    audio.play().catch(() => undefined);
+  };
+
+  const registerPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType !== "touch") return false;
+    activePointerIdsRef.current.add(e.pointerId);
+    const isMultiTouch = activePointerIdsRef.current.size > 1;
+    setMultiTouchState(isMultiTouch);
+    return isMultiTouch;
+  };
+
+  const registerPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType !== "touch") return;
+    activePointerIdsRef.current.delete(e.pointerId);
+    setMultiTouchState(activePointerIdsRef.current.size > 1);
+  };
+
+  const addPoint = (pt: Point) => {
+    const pts = pointsRef.current;
+    const last = pts[pts.length - 1];
+    if (last) {
+      const dist = Math.hypot(pt.x - last.x, pt.y - last.y);
+      if (dist < MIN_POINT_DISTANCE) return;
+    }
+    pts.push(pt);
+  };
 
   // Resize and prepare the canvas for high-DPI rendering.
   useEffect(() => {
@@ -260,6 +437,8 @@ export default function Home() {
       ctx.strokeStyle = lineStyle.color;
       ctx.shadowColor = lineStyle.shadowColor;
       ctx.shadowBlur = 0;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
 
       // Reset drawing state
       pointsRef.current = [];
@@ -287,6 +466,28 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const bg = new Audio("/music-box-we-wish-you-a-merry-christmas-79501.mp3");
+    bg.loop = true;
+    bg.volume = 0.18;
+    bg.preload = "auto";
+    bgAudioRef.current = bg;
+
+    const win = new Audio("/tada-fanfare-356032.mp3");
+    win.volume = 0.8;
+    win.preload = "auto";
+    winAudioRef.current = win;
+
+    const lose = new Audio("/game-over-39-199830.mp3");
+    lose.volume = 0.7;
+    lose.preload = "auto";
+    loseAudioRef.current = lose;
+
+    return () => {
+      bg.pause();
+    };
+  }, []);
+
   // Render the current stroke and overlay, computing score live
   const render = () => {
     const canvas = canvasRef.current;
@@ -307,10 +508,11 @@ export default function Home() {
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
 
-    const pts = pointsRef.current;
+    const rawPts = pointsRef.current;
+    const drawPts = rawPts.length > 2 ? smoothPoints(rawPts) : rawPts;
     let res: { score: number; center: Point; radius: number } | null = null;
-    if (pts.length >= 8) {
-      const r = computeCircleScore(pts);
+    if (rawPts.length >= 8) {
+      const r = computeCircleScore(rawPts);
       res = { score: r.score, center: r.center, radius: r.radius };
       const now = performance.now();
       if (now - lastLiveUpdateRef.current > 50) {
@@ -319,19 +521,19 @@ export default function Home() {
       }
     }
 
-    if (pts.length > 0) {
+    if (drawPts.length > 0) {
       // Build smooth path
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 0; i < pts.length - 1; i++) {
-        const p0 = pts[i];
-        const p1 = pts[i + 1];
+      ctx.moveTo(drawPts[0].x, drawPts[0].y);
+      for (let i = 0; i < drawPts.length - 1; i++) {
+        const p0 = drawPts[i];
+        const p1 = drawPts[i + 1];
         const mx = (p0.x + p1.x) / 2;
         const my = (p0.y + p1.y) / 2;
         ctx.quadraticCurveTo(p0.x, p0.y, mx, my);
       }
-      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      ctx.lineTo(drawPts[drawPts.length - 1].x, drawPts[drawPts.length - 1].y);
 
       const s = res?.score ?? liveScore ?? score ?? 0;
       const color = getColorByScore(s);
@@ -380,6 +582,19 @@ export default function Home() {
     rafRef.current = requestAnimationFrame(() => render());
   };
 
+  const cancelDrawing = () => {
+    const canvas = canvasRef.current;
+    if (canvas && drawingPointerIdRef.current != null) {
+      canvas.releasePointerCapture(drawingPointerIdRef.current);
+    }
+    drawingRef.current = false;
+    drawingPointerIdRef.current = null;
+    setIsDrawing(false);
+    pointsRef.current = [];
+    setLiveScore(null);
+    requestDraw();
+  };
+
   // Map a pointer event to canvas-local CSS pixel coordinates.
   const eventToPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasRef.current!;
@@ -395,11 +610,21 @@ export default function Home() {
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (e.pointerType !== "touch") setMultiTouchState(false);
+    const isMultiTouch = registerPointerDown(e);
+    if (isMultiTouch) {
+      cancelDrawing();
+      return;
+    }
+    if (drawingRef.current) return;
+    startBackgroundAudio();
     canvas.setPointerCapture(e.pointerId);
+    drawingPointerIdRef.current = e.pointerId;
     drawingRef.current = true;
     setIsDrawing(true);
     const pt = eventToPoint(e);
-    pointsRef.current = [pt];
+    pointsRef.current = [];
+    addPoint(pt);
     pushRipple();
     setWon(false);
     setCelebrating(false);
@@ -413,6 +638,8 @@ export default function Home() {
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawingRef.current) return;
+    if (drawingPointerIdRef.current !== e.pointerId) return;
+    if (multiTouchRef.current) return;
 
     // Prefer coalesced events for smoothness where supported
     const coalesced: PointerEvent[] | undefined = e.nativeEvent.getCoalescedEvents?.();
@@ -420,14 +647,13 @@ export default function Home() {
       const canvas = canvasRef.current!;
       const rect = canvas.getBoundingClientRect();
       for (const ce of coalesced) {
-        pointsRef.current.push({
+        addPoint({
           x: ce.clientX - rect.left,
           y: ce.clientY - rect.top,
         });
       }
     } else {
-      const pt = eventToPoint(e);
-      pointsRef.current.push(pt);
+      addPoint(eventToPoint(e));
       pushRipple();
     }
     if (coalesced && coalesced.length > 0) {
@@ -443,47 +669,65 @@ export default function Home() {
   };
 
   const finishStroke = () => {
+    const canvas = canvasRef.current;
+    if (canvas && drawingPointerIdRef.current != null) {
+      canvas.releasePointerCapture(drawingPointerIdRef.current);
+    }
     drawingRef.current = false;
+    drawingPointerIdRef.current = null;
     setIsDrawing(false);
     const result = computeCircleScore(pointsRef.current);
     setScore(result.score);
     setLiveScore(result.score);
 
-    // Prize unlock at 92%+
-    const isWin = result.score >= 92;
+    // Prize unlock threshold
+    const isWin = result.score >= WIN_THRESHOLD;
     setWon(isWin);
 
     if (isWin) {
+      playEffect(winAudioRef.current, 0.85);
       setCelebrating(true);
       triggerWinFlash();
       let reward = PRIZES[0];
       if (result.score === 100) reward = PRIZES[3];
       else if (result.score >= 98) reward = PRIZES[2];
       else if (result.score >= 96) reward = PRIZES[1];
-      else if (result.score >= 92) reward = PRIZES[0];
+      else if (result.score >= WIN_THRESHOLD) reward = PRIZES[0];
       setPrize(reward);
       setTimeout(() => setModalOpen(true), 1000); // Delay modal slightly for effect
-    } else if (flashTimeoutRef.current) {
-      window.clearTimeout(flashTimeoutRef.current);
-      flashTimeoutRef.current = null;
+    } else {
+      playEffect(loseAudioRef.current, 0.6);
+      if (flashTimeoutRef.current) {
+        window.clearTimeout(flashTimeoutRef.current);
+        flashTimeoutRef.current = null;
+      }
       setFlash(false);
     }
 
     requestDraw();
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    registerPointerUp(e);
     if (!drawingRef.current) return;
+    if (drawingPointerIdRef.current !== e.pointerId) return;
     finishStroke();
   };
 
-  const onPointerLeave = () => {
+  const onPointerLeave = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    registerPointerUp(e);
     if (!drawingRef.current) return;
+    if (drawingPointerIdRef.current !== e.pointerId) return;
     finishStroke();
   };
 
   const clearAll = () => {
     pointsRef.current = [];
+    drawingRef.current = false;
+    drawingPointerIdRef.current = null;
+    activePointerIdsRef.current.clear();
+    setIsDrawing(false);
+    setMultiTouchState(false);
     setScore(null);
     setLiveScore(null);
     setWon(false);
@@ -500,11 +744,16 @@ export default function Home() {
   };
 
   const activeScore = liveScore ?? score;
+  const showFail = !isDrawing && score !== null && score < WIN_THRESHOLD;
   const statusText = useMemo(() => {
+    if (multiTouch) return "Two-finger touch detected. Use one finger to draw.";
     if (activeScore == null) return "Draw a circle in one smooth stroke.";
-    if (activeScore >= 92) return `Prize tier unlocked: ${activeScore}%`;
-    return `Your circle score: ${activeScore}%. ${isDrawing ? "Keep going..." : "Aim for 92%+"}`;
-  }, [activeScore, isDrawing]);
+    if (!isDrawing && score != null && score < WIN_THRESHOLD) {
+      return `Try failed - ${score}%. Aim for ${WIN_THRESHOLD}%+.`;
+    }
+    if (activeScore >= WIN_THRESHOLD) return `Prize tier unlocked: ${activeScore}%`;
+    return `Your circle score: ${activeScore}%. ${isDrawing ? "Keep going..." : `Aim for ${WIN_THRESHOLD}%+`}`;
+  }, [activeScore, isDrawing, multiTouch, score]);
 
   const panelClass = [
     "w-full max-w-xl rounded-3xl bg-gradient-to-br from-slate-900/80 via-slate-950/80 to-[#0a1628] p-4 shadow-[0_20px_70px_rgba(8,47,73,0.35)] ring-1 ring-cyan-500/25 backdrop-blur transition-shadow",
@@ -521,6 +770,8 @@ export default function Home() {
   return (
     <div className="relative flex h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950 via-[#0a0a0a] to-black text-slate-50">
       <BackgroundDeco />
+      <SnowOverlay />
+      <HolidayScene />
       <SideBeams />
       {celebrating && <Confetti />}
       <WinningModal
@@ -531,7 +782,7 @@ export default function Home() {
         }}
       />
 
-      <div className="relative mx-auto flex max-h-[92vh] w-full max-w-3xl flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
+      <div className="relative z-10 mx-auto flex max-h-[92vh] w-full max-w-3xl flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
         <header className="mb-6 w-full max-w-xl text-center">
           <div className="mb-4 flex justify-center">
             <div className="flex items-center gap-3 rounded-full bg-white/5 px-4 py-2 ring-1 ring-white/15 backdrop-blur">
@@ -543,9 +794,14 @@ export default function Home() {
                 className="h-8 w-auto"
               />
               <div className="text-left">
-                <p className="text-[10px] uppercase tracking-[0.25em] text-[#D4AF37]">
-                  Beno Circle Lab
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-[#D4AF37]">
+                    Beno Circle Lab
+                  </p>
+                  <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[9px] uppercase tracking-[0.3em] text-emerald-100 ring-1 ring-emerald-300/40">
+                    Holiday
+                  </span>
+                </div>
                 <p className="text-xs text-slate-100">Luxury experiences, drawn by hand.</p>
               </div>
             </div>
@@ -554,7 +810,7 @@ export default function Home() {
             Circle Master
           </h1>
           <p className="mt-3 text-sm text-slate-300 sm:text-base">
-            Aim for a 92%+ circle to unlock the Pulse Grid prizes.
+            Aim for a {WIN_THRESHOLD}%+ circle to unlock the Pulse Grid prizes.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-medium">
             <span className="rounded-full bg-[#D4AF37]/10 px-3 py-1 text-[#D4AF37] ring-1 ring-[#D4AF37]/30">
@@ -572,6 +828,7 @@ export default function Home() {
         <div ref={containerRef} className={panelClass} style={panelStyle}>
           <div className="relative overflow-hidden rounded-3xl">
             <NeonBackdrop />
+            <HolidayLights />
             {touchRipples.length > 0 && <TouchRipples ripples={touchRipples} />}
             <canvas
               ref={canvasRef}
@@ -598,10 +855,17 @@ export default function Home() {
                 </div>
               </div>
             )}
+            {showFail && (
+              <div className="pointer-events-none absolute inset-x-6 bottom-4 z-50 flex justify-center">
+                <div className="rounded-full bg-rose-500/15 px-4 py-2 text-xs font-semibold text-rose-100 ring-1 ring-rose-300/40 backdrop-blur">
+                  Try failed - {WIN_THRESHOLD}% needed to win.
+                </div>
+              </div>
+            )}
             {/* Floating live score badge */}
             <div
               className={[
-                "pointer-events-none absolute left-4 top-4 select-none rounded-full px-3 py-1 text-sm font-medium shadow-sm",
+                "pointer-events-none absolute left-4 top-4 z-50 select-none rounded-full px-3 py-1 text-sm font-medium shadow-sm",
                 activeScore != null ? "opacity-100" : "opacity-0",
                 "transition-opacity",
               ].join(" ")}
